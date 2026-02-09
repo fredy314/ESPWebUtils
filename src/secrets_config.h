@@ -67,20 +67,20 @@
 // Застосування значень
 // ============================================
 
-const char* hostname = WIFI_HOSTNAME;
-const char* ntpServer = NTP_SERVER;
-const long gmtOffset_sec = GMT_OFFSET_SEC;
-const int daylightOffset_sec = DAYLIGHT_OFFSET_SEC;
+inline const char* hostname = WIFI_HOSTNAME;
+inline const char* ntpServer = NTP_SERVER;
+inline const long gmtOffset_sec = GMT_OFFSET_SEC;
+inline const int daylightOffset_sec = DAYLIGHT_OFFSET_SEC;
 
-IPAddress local_IP = STATIC_IP;
-IPAddress gateway = GATEWAY_IP;
-IPAddress subnet = SUBNET_MASK;
-IPAddress primaryDNS = PRIMARY_DNS;
-IPAddress secondaryDNS = SECONDARY_DNS;
+inline IPAddress local_IP = STATIC_IP;
+inline IPAddress gateway = GATEWAY_IP;
+inline IPAddress subnet = SUBNET_MASK;
+inline IPAddress primaryDNS = PRIMARY_DNS;
+inline IPAddress secondaryDNS = SECONDARY_DNS;
 
-const char* authRealm = AUTH_REALM;
-const char* authUsername = AUTH_USERNAME;
-const char* authPassword = AUTH_PASSWORD;
-const char* authFailMessage = AUTH_FAIL_MESSAGE;
+inline const char* authRealm = AUTH_REALM;
+inline const char* authUsername = AUTH_USERNAME;
+inline const char* authPassword = AUTH_PASSWORD;
+inline const char* authFailMessage = AUTH_FAIL_MESSAGE;
 
 #endif // SECRETS_CONFIG_H

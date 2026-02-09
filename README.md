@@ -33,11 +33,11 @@
 #include "secrets_types.h"
 
 // WiFi мережі (обов'язково)
-WiFiNetwork wifiNetworks[] = {
+inline WiFiNetwork wifiNetworks[] = {
   {"YourSSID1", "YourPassword1"},
   {"YourSSID2", "YourPassword2"}
 };
-const int wifiNetworkCount = sizeof(wifiNetworks) / sizeof(wifiNetworks[0]);
+inline const int wifiNetworkCount = sizeof(wifiNetworks) / sizeof(wifiNetworks[0]);
 #define WIFI_NETWORKS_DEFINED
 
 // Опціонально - розкоментуйте та змініть за потреби:
