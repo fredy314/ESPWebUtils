@@ -20,10 +20,10 @@ void AuthenticationMiddleware::begin(
 void AuthenticationMiddleware::begin() {
   begin(
     AsyncAuthType::AUTH_DIGEST,
-    authRealm,
-    authUsername,
-    authPassword,
-    authFailMessage
+    AUTH_REALM,      // Використовуємо макроси напряму
+    AUTH_USERNAME,
+    AUTH_PASSWORD,
+    AUTH_FAIL_MESSAGE
   );
 }
 

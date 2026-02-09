@@ -35,12 +35,12 @@ WiFiManager::WiFiManager(
 WiFiManager::WiFiManager() : WiFiManager(
   wifiNetworks,
   wifiNetworkCount,
-  hostname,
-  local_IP,
-  gateway,
-  subnet,
-  primaryDNS,
-  secondaryDNS
+  WIFI_HOSTNAME,    // Використовуємо макроси напряму
+  STATIC_IP,
+  GATEWAY_IP,
+  SUBNET_MASK,
+  PRIMARY_DNS,
+  SECONDARY_DNS
 ) {}
 
 void WiFiManager::begin() {
