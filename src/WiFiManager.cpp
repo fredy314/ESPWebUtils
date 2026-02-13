@@ -1,5 +1,6 @@
 #include "WiFiManager.h"
 #include "secrets.h"
+#include "esp_wifi.h"
 
 WiFiManager::WiFiManager(
   WiFiNetwork* networks, 
@@ -25,7 +26,9 @@ WiFiManager::WiFiManager(
     _currentPowerIndex(0),
     _isOpenNetwork(false),
     _isScanning(false) {
-  
+      
+      esp_wifi_set_ps(WIFI_PS_NONE);
+      esp_wifi_set_country_code("UA", true);
   // Generate hostname if not provided
   if (_hostname.length() == 0) {
     _hostname = generateHostname();
@@ -46,29 +49,49 @@ WiFiManager::WiFiManager() : WiFiManager(
 void WiFiManager::begin() {
   Serial.println("\n--- WiFiManager: Starting ---");
   Serial.printf("Hostname: %s\n", _hostname.c_str());
-  
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
   WiFi.setSleep(false);
-  
   // Set hostname
   WiFi.setHostname(_hostname.c_str());
-  
-  delay(100);
-  startScan();
+  _state = STARTING;
+  _stateStartTime = millis();
 }
 
 void WiFiManager::tick() {
   switch (_state) {
+    case STARTING:
+      if (millis() - _stateStartTime > 200) {
+        startScan();
+      }
+      break;
     case SCANNING:
       processScanResults();
       break;
-      
+    case DISCONNECTING:
+      if (millis() - _stateStartTime > 500) {
+        // Actual connection logic (moved from connectToNetwork)
+        WiFi.mode(WIFI_STA);
+
+        if (!_isOpenNetwork && _localIP != IPAddress(0, 0, 0, 0)) {
+          if (_primaryDNS != IPAddress(0, 0, 0, 0)) {
+            WiFi.config(_localIP, _gateway, _subnet, _primaryDNS, _secondaryDNS);
+          } else {
+            WiFi.config(_localIP, _gateway, _subnet);
+          }
+        } else {
+          WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
+        }
+        WiFi.setTxPower(_powerSteps[_currentPowerIndex]);
+        WiFi.begin(_currentSSID.c_str(), _pendingPassword.c_str());
+        _state = _isOpenNetwork ? CONNECTING_OPEN : CONNECTING_KNOWN;
+        _stateStartTime = millis();
+      }
+      break;
     case CONNECTING_KNOWN:
     case CONNECTING_OPEN:
       checkConnection();
       break;
-      
     case CONNECTED:
       // Check if still connected
       if (WiFi.status() != WL_CONNECTED) {
@@ -76,16 +99,48 @@ void WiFiManager::tick() {
         handleDisconnection();
       }
       break;
-      
+    case WAIT_SCAN_RETRY:
+      if (millis() - _stateStartTime > 2000) {
+        startScan();
+      }
+      break;
+    case AP_STARTING:
+      if (_apSubState == 1 && millis() - _stateStartTime > 500) {
+        WiFi.setTxPower(WIFI_POWER_15dBm);
+        WiFi.mode(WIFI_AP);
+        _stateStartTime = millis();
+        _apSubState = 2;
+      } 
+      else if (_apSubState == 2 && millis() - _stateStartTime > 200) {
+        String apName = "Light_" + _hostname;
+        WiFi.softAP(apName.c_str(), "12345678", 6, false, 4);
+        WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
+        _stateStartTime = millis();
+        _apSubState = 3;
+        Serial.printf("AP SSID: %s\n", apName.c_str());
+      }
+      else if (_apSubState == 3 && millis() - _stateStartTime > 500) {
+        if (MDNS.begin(_hostname.c_str())) {
+          Serial.printf("mDNS: Started as %s.local\n", _hostname.c_str());
+        }
+        _state = AP_MODE;
+        _lastScanAttempt = millis();
+        Serial.println("WiFi: AP mode fully active");
+      }
+      break;
     case AP_MODE:
       // Periodically try to reconnect
       if (millis() - _lastScanAttempt > AP_RESCAN_INTERVAL) {
         Serial.println("WiFi: AP mode - attempting rescan...");
         WiFi.softAPdisconnect(true);
         WiFi.mode(WIFI_STA);
-        delay(100);
-        startScan();
+        _state = STARTING;
+        _stateStartTime = millis();
       }
+      break;
+    default:
+      Serial.println("WiFi: Unknown state! Recovering...");
+      startScan();
       break;
   }
 }
@@ -108,10 +163,10 @@ void WiFiManager::processScanResults() {
   }
   
   if (n == WIFI_SCAN_FAILED) {
-    Serial.println("WiFi: Scan failed, retrying...");
+    Serial.println("WiFi: Scan failed, scheduled retry...");
     _isScanning = false;
-    delay(1000);
-    startScan();
+    _state = WAIT_SCAN_RETRY;
+    _stateStartTime = millis();
     return;
   }
   
@@ -183,30 +238,15 @@ void WiFiManager::processScanResults() {
 }
 
 void WiFiManager::connectToNetwork(const char* ssid, const char* password, bool isOpen) {
-  Serial.printf("WiFi: Connecting to %s [Power: %d]\n", ssid, _currentPowerIndex);
+  Serial.printf("WiFi: Preparing connection to %s [Power: %d]\n", ssid, _currentPowerIndex);
   
   _currentSSID = ssid;
+  _pendingPassword = password;
   _isOpenNetwork = isOpen;
-  _state = isOpen ? CONNECTING_OPEN : CONNECTING_KNOWN;
+  _state = DISCONNECTING;
   _stateStartTime = millis();
   
   WiFi.disconnect(true);
-  delay(500);
-  WiFi.mode(WIFI_STA);
-  delay(100);
-  
-  // Configure static IP for known networks, DHCP for open networks
-  if (!isOpen && _localIP != IPAddress(0, 0, 0, 0)) {
-    if (!WiFi.config(_localIP, _gateway, _subnet, _primaryDNS, _secondaryDNS)) {
-      Serial.println("WiFi: Static IP configuration failed");
-    }
-  } else {
-    // Use DHCP
-    WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
-  }
-  
-  WiFi.setTxPower(_powerSteps[_currentPowerIndex]);
-  WiFi.begin(ssid, password);
 }
 
 void WiFiManager::checkConnection() {
@@ -277,24 +317,14 @@ void WiFiManager::handleDisconnection() {
 }
 
 void WiFiManager::startAPMode() {
-  Serial.println("WiFi: Starting Access Point mode");
+  Serial.println("WiFi: Switching to AP initialization...");
   
-  WiFi.mode(WIFI_AP);
-  WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
   
-  String apName = "Light_" + _hostname;
-  WiFi.softAP(apName.c_str(), "12345678");
-  
-  Serial.printf("AP: %s\n", apName.c_str());
-  Serial.printf("AP IP: %s\n", WiFi.softAPIP().toString().c_str());
-  
-  // Start mDNS in AP mode
-  if (MDNS.begin(_hostname.c_str())) {
-    Serial.printf("mDNS: Started as %s.local\n", _hostname.c_str());
-  }
-  
-  _state = AP_MODE;
-  _lastScanAttempt = millis();
+  _state = AP_STARTING;
+  _apSubState = 1;
+  _stateStartTime = millis();
 }
 
 String WiFiManager::generateHostname() {

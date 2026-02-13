@@ -46,7 +46,11 @@ private:
     CONNECTING_KNOWN,
     CONNECTING_OPEN,
     CONNECTED,
-    AP_MODE
+    AP_MODE,
+    STARTING,
+    DISCONNECTING,
+    WAIT_SCAN_RETRY,
+    AP_STARTING
   };
   
   State _state;
@@ -57,8 +61,10 @@ private:
   int _currentNetworkIndex;
   int _currentPowerIndex;
   String _currentSSID;
+  String _pendingPassword;
   bool _isOpenNetwork;
   bool _isScanning;
+  int _apSubState;
   
   // Power levels
   static const int POWER_LEVELS = 4;
