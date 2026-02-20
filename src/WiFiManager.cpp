@@ -1,6 +1,7 @@
 #include "WiFiManager.h"
 #include "secrets.h"
 #include "esp_wifi.h"
+#include <ESPmDNS.h>
 
 WiFiManager::WiFiManager(
   WiFiNetwork* networks, 
@@ -29,10 +30,6 @@ WiFiManager::WiFiManager(
       
       esp_wifi_set_ps(WIFI_PS_NONE);
       esp_wifi_set_country_code("UA", true);
-  // Generate hostname if not provided
-  if (_hostname.length() == 0) {
-    _hostname = generateHostname();
-  }
 }
 
 WiFiManager::WiFiManager() : WiFiManager(
@@ -53,6 +50,9 @@ void WiFiManager::begin() {
   WiFi.disconnect();
   WiFi.setSleep(false);
   // Set hostname
+  if (_hostname.length() == 0) {
+    _hostname = generateHostname();
+  }
   WiFi.setHostname(_hostname.c_str());
   _state = STARTING;
   _stateStartTime = millis();
@@ -257,11 +257,11 @@ void WiFiManager::checkConnection() {
     
     // Start mDNS
     if (MDNS.begin(_hostname.c_str())) {
-      Serial.printf("mDNS: Started as %s.local\n", _hostname.c_str());
+        Serial.printf("mDNS: Started as %s.local\n", _hostname.c_str());
+          MDNS.addService("http", "tcp", 80);
     } else {
       Serial.println("mDNS: Failed to start");
     }
-    
     _state = CONNECTED;
     return;
   }
@@ -328,9 +328,11 @@ void WiFiManager::startAPMode() {
 }
 
 String WiFiManager::generateHostname() {
-  uint8_t mac[6];
-  WiFi.macAddress(mac);
+  uint64_t chipid = ESP.getEfuseMac(); // 6 байтів MAC
   char hostname[32];
-  snprintf(hostname, sizeof(hostname), "light-%02x%02x%02x", mac[3], mac[4], mac[5]);
+  snprintf(hostname, sizeof(hostname), "light-%02X%02X%02X",
+           (uint8_t)(chipid >> 24) & 0xFF,
+           (uint8_t)(chipid >> 32) & 0xFF,
+           (uint8_t)(chipid >> 40) & 0xFF);
   return String(hostname);
 }
