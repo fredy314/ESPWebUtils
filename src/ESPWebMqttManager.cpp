@@ -146,6 +146,10 @@ void ESPWebMqttManager::addHALight(const char* id, const char* name) {
     _haDefs.push_back({id, name, "", "", "", "light", "", 0, 0});
 }
 
+void ESPWebMqttManager::addHAJsonLight(const char* id, const char* name, const char* effectsJson) {
+    _haDefs.push_back({id, name, "", "", "", "light_json", effectsJson ? effectsJson : "", 0, 0});
+}
+
 void ESPWebMqttManager::addHASelect(const char* id, const char* name, const char* optionsJson) {
     _haDefs.push_back({id, name, "", "", "", "select", optionsJson, 0, 0});
 }
@@ -155,8 +159,11 @@ void ESPWebMqttManager::addHANumber(const char* id, const char* name, float min,
 }
 
 void ESPWebMqttManager::publishHAConfig(const HASensorDef& def) {
-    String configTopic = String("homeassistant/") + def.type + "/" + _deviceId + "/" + def.id + "/config";
-    String baseTopic = String("homeassistant/") + def.type + "/" + _deviceId + "/" + def.id;
+    String component = def.type;
+    if (component == "light_json") component = "light";
+
+    String configTopic = String("homeassistant/") + component + "/" + _deviceId + "/" + def.id + "/config";
+    String baseTopic = String("homeassistant/") + component + "/" + _deviceId + "/" + def.id;
     
     String config = "{";
     config += "\"name\":\"" + String(_deviceName) + " " + def.name + "\",";
@@ -167,6 +174,15 @@ void ESPWebMqttManager::publishHAConfig(const HASensorDef& def) {
     } else if (def.type == "switch" || def.type == "light") {
         config += "\"state_topic\":\"" + baseTopic + "/state\",";
         config += "\"command_topic\":\"" + baseTopic + "/set\",";
+    } else if (def.type == "light_json") {
+        config += "\"state_topic\":\"" + baseTopic + "/state\",";
+        config += "\"command_topic\":\"" + baseTopic + "/set\",";
+        config += "\"schema\":\"json\",";
+        config += "\"brightness\":true,";
+        if (def.options != "") {
+            config += "\"effect\":true,";
+            config += "\"effect_list\":" + def.options+",";
+        }
     } else if (def.type == "select") {
         config += "\"state_topic\":\"" + baseTopic + "/state\",";
         config += "\"command_topic\":\"" + baseTopic + "/set\",";

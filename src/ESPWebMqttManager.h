@@ -48,6 +48,7 @@ public:
     void addHASensor(const char* id, const char* name, const char* deviceClass = nullptr, const char* unit = nullptr, const char* icon = nullptr);
     void addHASwitch(const char* id, const char* name, const char* icon = nullptr);
     void addHALight(const char* id, const char* name);
+    void addHAJsonLight(const char* id, const char* name, const char* effectsJson = nullptr);
     void addHASelect(const char* id, const char* name, const char* optionsJson);
     void addHANumber(const char* id, const char* name, float min, float max, const char* unit = nullptr, const char* icon = nullptr);
 
@@ -85,7 +86,7 @@ private:
         String deviceClass;
         String unit;
         String icon;
-        String type; // sensor, switch, light, select, number
+        String type; // sensor, switch, light, select, number, light_json
         String options; // для select
         float min, max; // для number
     };
