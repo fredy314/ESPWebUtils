@@ -1,0 +1,66 @@
+#include "ESPWebNowManager.h"
+
+ESPWebNowManager* ESPWebNowManager::_instance = nullptr;
+
+ESPWebNowManager::ESPWebNowManager() : _onReceiveHandler(nullptr), _isGateway(false) {
+    _instance = this;
+}
+
+bool ESPWebNowManager::begin(bool isGateway) {
+    _isGateway = isGateway;
+    
+    WiFi.mode(WIFI_STA);
+    if (esp_now_init() != ESP_OK) {
+        Serial.println("Error initializing ESP-NOW");
+        return false;
+    }
+
+    esp_now_register_recv_cb(_onDataReceive);
+    esp_now_register_send_cb(_onDataSend);
+
+    if (!_isGateway) {
+        // Додаємо Broadcast peer для Node
+        uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+        esp_now_peer_info_t peerInfo = {};
+        memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+        peerInfo.channel = 0;  
+        peerInfo.encrypt = false;
+        
+        if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+            Serial.println("Failed to add broadcast peer");
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool ESPWebNowManager::send(const char* deviceId, uint8_t type, const char* subTopic, const char* payload) {
+    ESPNowPacket packet;
+    memset(&packet, 0, sizeof(packet));
+    strncpy(packet.deviceId, deviceId, sizeof(packet.deviceId) - 1);
+    packet.type = type;
+    strncpy(packet.subTopic, subTopic, sizeof(packet.subTopic) - 1);
+    strncpy(packet.payload, payload, sizeof(packet.payload) - 1);
+
+    uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&packet, sizeof(packet));
+    
+    return result == ESP_OK;
+}
+
+void ESPWebNowManager::onReceive(THandler handler) {
+    _onReceiveHandler = handler;
+}
+
+void ESPWebNowManager::_onDataReceive(const esp_now_recv_info* info, const uint8_t* incomingData, int len) {
+    if (_instance && _instance->_onReceiveHandler && len == sizeof(ESPNowPacket)) {
+        ESPNowPacket packet;
+        memcpy(&packet, incomingData, sizeof(packet));
+        _instance->_onReceiveHandler(packet, info->src_addr);
+    }
+}
+
+void ESPWebNowManager::_onDataSend(const uint8_t* mac_addr, esp_now_send_status_t status) {
+    // Можна додати логування статусу відправки
+}

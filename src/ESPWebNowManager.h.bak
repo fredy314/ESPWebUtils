@@ -1,0 +1,37 @@
+#ifndef ESP_WEB_NOW_MANAGER_H
+#define ESP_WEB_NOW_MANAGER_H
+
+#include <Arduino.h>
+#include <esp_now.h>
+#include <WiFi.h>
+
+struct ESPNowPacket {
+    char deviceId[16];   // Унікальний ID (ChipId)
+    uint8_t type;        // 0=Sensor, 1=Command, 2=HA Discovery
+    char subTopic[32];   // Наприклад "distance"
+    char payload[190];   // Значення
+};
+
+class ESPWebNowManager {
+public:
+    typedef std::function<void(const ESPNowPacket& packet, const uint8_t* mac)> THandler;
+
+    ESPWebNowManager();
+    bool begin(bool isGateway);
+    
+    // Для Node: відправка даних на шлюз (Broadcast або конкретний MAC)
+    bool send(const char* deviceId, uint8_t type, const char* subTopic, const char* payload);
+    
+    // Для Gateway: реєстрація обробника отриманих даних
+    void onReceive(THandler handler);
+
+private:
+    static void _onDataReceive(const esp_now_recv_info* info, const uint8_t* incomingData, int len);
+    static void _onDataSend(const uint8_t* mac_addr, esp_now_send_status_t status);
+    
+    static ESPWebNowManager* _instance;
+    THandler _onReceiveHandler;
+    bool _isGateway;
+};
+
+#endif
