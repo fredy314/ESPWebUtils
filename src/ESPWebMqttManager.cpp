@@ -166,7 +166,7 @@ void ESPWebMqttManager::publishHAConfig(const HASensorDef& def) {
     String baseTopic = String("homeassistant/") + component + "/" + _deviceId + "/" + def.id;
     
     String config = "{";
-    config += "\"name\":\"" + String(_deviceName) + " " + def.name + "\",";
+    config += "\"name\":\"" + def.name + "\",";
     config += "\"unique_id\":\"" + String(_deviceId) + "_" + def.id + "\",";
     
     if (def.type == "sensor") {
