@@ -62,16 +62,18 @@ private:
   int _currentPowerIndex;
   String _currentSSID;
   String _pendingPassword;
+  uint8_t _currentBSSID[6];
+  int32_t _currentChannel;
   bool _isOpenNetwork;
   bool _isScanning;
   int _apSubState;
   
   // Power levels
-  static const int POWER_LEVELS = 4;
+  static const int POWER_LEVELS = 1;
   wifi_power_t _powerSteps[POWER_LEVELS] = {
-    WIFI_POWER_8_5dBm,
-    WIFI_POWER_11dBm,
-    WIFI_POWER_13dBm,
+    //WIFI_POWER_8_5dBm,
+    //WIFI_POWER_11dBm,
+    //WIFI_POWER_13dBm,
     WIFI_POWER_15dBm
   };
   
@@ -83,7 +85,7 @@ private:
   // Private methods
   void startScan();
   void processScanResults();
-  void connectToNetwork(const char* ssid, const char* password, bool isOpen = false);
+  void connectToNetwork(const char* ssid, const char* password, bool isOpen = false, int32_t channel = 0, const uint8_t* bssid = nullptr);
   void startAPMode();
   void checkConnection();
   void handleDisconnection();

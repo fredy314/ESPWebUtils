@@ -25,9 +25,11 @@ WiFiManager::WiFiManager(
     _lastScanAttempt(0),
     _currentNetworkIndex(0),
     _currentPowerIndex(0),
+    _currentChannel(0),
     _isOpenNetwork(false),
     _isScanning(false) {
       
+      memset(_currentBSSID, 0, 6);
       esp_wifi_set_ps(WIFI_PS_NONE);
       esp_wifi_set_country_code("UA", true);
 }
@@ -83,7 +85,7 @@ void WiFiManager::tick() {
           WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
         }
         WiFi.setTxPower(_powerSteps[_currentPowerIndex]);
-        WiFi.begin(_currentSSID.c_str(), _pendingPassword.c_str());
+        WiFi.begin(_currentSSID.c_str(), _pendingPassword.c_str(), _currentChannel, (_currentChannel > 0) ? _currentBSSID : nullptr);
         _state = _isOpenNetwork ? CONNECTING_OPEN : CONNECTING_KNOWN;
         _stateStartTime = millis();
       }
@@ -203,46 +205,76 @@ void WiFiManager::processScanResults() {
   
   // If found known network, connect to it
   if (bestKnownIndex >= 0) {
-    Serial.printf("WiFi: Found known network: %s (RSSI: %d)\n", bestKnownSSID.c_str(), bestKnownRSSI);
-    _currentNetworkIndex = bestKnownIndex;
-    _currentPowerIndex = 0;
-    WiFi.scanDelete();
-    connectToNetwork(_networks[bestKnownIndex].ssid, _networks[bestKnownIndex].password, false);
-    return;
+    int bestRSSI = -1000;
+    int bestAPIndex = -1;
+    
+    // Знаходимо найкращу точку доступу (BSSID) для цього SSID
+    for (int i = 0; i < n; i++) {
+      if (WiFi.SSID(i) == _networks[bestKnownIndex].ssid) {
+        if (WiFi.RSSI(i) > bestRSSI) {
+          bestRSSI = WiFi.RSSI(i);
+          bestAPIndex = i;
+        }
+      }
+    }
+
+    if (bestAPIndex >= 0) {
+      Serial.printf("WiFi: Found known network: %s (RSSI: %d, Channel: %d, BSSID: %s)\n", 
+                    WiFi.SSID(bestAPIndex).c_str(), WiFi.RSSI(bestAPIndex), 
+                    WiFi.channel(bestAPIndex), WiFi.BSSIDstr(bestAPIndex).c_str());
+      
+      _currentNetworkIndex = bestKnownIndex;
+      _currentPowerIndex = 0;
+      WiFi.scanDelete();
+      connectToNetwork(_networks[bestKnownIndex].ssid, _networks[bestKnownIndex].password, false, 
+                       WiFi.channel(bestAPIndex), WiFi.BSSID(bestAPIndex));
+      return;
+    }
   }
   
   // Second pass: Look for open networks with good signal
   String bestOpenSSID = "";
   int bestOpenRSSI = -1000;
+  int bestOpenAPIndex = -1;
   
   for (int i = 0; i < n; i++) {
     if (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) {
       int rssi = WiFi.RSSI(i);
       if (rssi > MIN_RSSI_OPEN && rssi > bestOpenRSSI) {
         bestOpenRSSI = rssi;
-        bestOpenSSID = WiFi.SSID(i);
+        bestOpenAPIndex = i;
       }
     }
   }
   
   WiFi.scanDelete();
   
-  if (bestOpenSSID.length() > 0) {
-    Serial.printf("WiFi: Found open network: %s (RSSI: %d)\n", bestOpenSSID.c_str(), bestOpenRSSI);
+  if (bestOpenAPIndex >= 0) {
+    Serial.printf("WiFi: Found open network: %s (RSSI: %d, BSSID: %s)\n", 
+                  WiFi.SSID(bestOpenAPIndex).c_str(), bestOpenRSSI, WiFi.BSSIDstr(bestOpenAPIndex).c_str());
     _currentPowerIndex = 0;
-    connectToNetwork(bestOpenSSID.c_str(), "", true);
+    connectToNetwork(WiFi.SSID(bestOpenAPIndex).c_str(), "", true, 
+                     WiFi.channel(bestOpenAPIndex), WiFi.BSSID(bestOpenAPIndex));
   } else {
     Serial.println("WiFi: No suitable networks found");
     startAPMode();
   }
 }
 
-void WiFiManager::connectToNetwork(const char* ssid, const char* password, bool isOpen) {
+void WiFiManager::connectToNetwork(const char* ssid, const char* password, bool isOpen, int32_t channel, const uint8_t* bssid) {
   Serial.printf("WiFi: Preparing connection to %s [Power: %d]\n", ssid, _currentPowerIndex);
   
   _currentSSID = ssid;
   _pendingPassword = password;
   _isOpenNetwork = isOpen;
+  _currentChannel = channel;
+  if (bssid) {
+    memcpy(_currentBSSID, bssid, 6);
+  } else {
+    memset(_currentBSSID, 0, 6);
+    _currentChannel = 0; // Якщо немає BSSID, скидаємо канал для звичайного підключення
+  }
+  
   _state = DISCONNECTING;
   _stateStartTime = millis();
   
@@ -304,11 +336,11 @@ void WiFiManager::handleDisconnection() {
   // Try to reconnect to the same network first
   if (_currentSSID.length() > 0) {
     if (_isOpenNetwork) {
-      connectToNetwork(_currentSSID.c_str(), "", true);
+      connectToNetwork(_currentSSID.c_str(), "", true, _currentChannel, _currentBSSID);
     } else {
       connectToNetwork(_networks[_currentNetworkIndex].ssid,
                       _networks[_currentNetworkIndex].password,
-                      false);
+                      false, _currentChannel, _currentBSSID);
     }
   } else {
     // No previous network, start scan
