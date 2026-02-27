@@ -46,6 +46,7 @@ public:
     void publishAvailability(bool online);
     void publishDiscovery();
     void addHASensor(const char* id, const char* name, const char* deviceClass = nullptr, const char* unit = nullptr, const char* icon = nullptr);
+    void addHABinarySensor(const char* id, const char* name, const char* deviceClass = nullptr, const char* icon = nullptr);
     void addHASwitch(const char* id, const char* name, const char* icon = nullptr);
     void addHALight(const char* id, const char* name);
     void addHAJsonLight(const char* id, const char* name, const char* effectsJson = nullptr);

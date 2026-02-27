@@ -138,6 +138,10 @@ void ESPWebMqttManager::addHASensor(const char* id, const char* name, const char
     _haDefs.push_back({id, name, deviceClass ? deviceClass : "", unit ? unit : "", icon ? icon : "", "sensor", "", 0, 0});
 }
 
+void ESPWebMqttManager::addHABinarySensor(const char* id, const char* name, const char* deviceClass, const char* icon) {
+    _haDefs.push_back({id, name, deviceClass ? deviceClass : "", "", icon ? icon : "", "binary_sensor", "", 0, 0});
+}
+
 void ESPWebMqttManager::addHASwitch(const char* id, const char* name, const char* icon) {
     _haDefs.push_back({id, name, "", "", icon ? icon : "", "switch", "", 0, 0});
 }
@@ -169,7 +173,7 @@ void ESPWebMqttManager::publishHAConfig(const HASensorDef& def) {
     config += "\"name\":\"" + def.name + "\",";
     config += "\"unique_id\":\"" + String(_deviceId) + "_" + def.id + "\",";
     
-    if (def.type == "sensor") {
+    if (def.type == "sensor" || def.type == "binary_sensor") {
         config += "\"state_topic\":\"" + baseTopic + "/state\",";
     } else if (def.type == "switch" || def.type == "light") {
         config += "\"state_topic\":\"" + baseTopic + "/state\",";
