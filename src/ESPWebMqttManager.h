@@ -1,3 +1,9 @@
+/*
+ * ESPWebUtils Library
+ * Copyright (c) 2026 Fredy
+ * * This software is released under the MIT License.
+ * See the LICENSE file in the project root for full license information.
+ */
 #ifndef ESP_WEB_MQTT_MANAGER_H
 #define ESP_WEB_MQTT_MANAGER_H
 
