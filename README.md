@@ -1,6 +1,6 @@
 # ESPWebUtils
 
-Бібліотека утиліт для ESP32: WiFi Manager та Authentication Middleware для веб-серверів.
+Бібліотека утиліт для ESP32: WiFi Manager, Authentication Middleware для веб-серверів та ESPWebMqttManager для зручної роботи з MQTT брокерами.
 
 ## Можливості
 
@@ -16,6 +16,11 @@
 - 🔐 Digest Authentication для веб-сервера
 - 🛡️ Захист сторінок від несанкціонованого доступу
 - ⚙️ Гнучке налаштування через `secrets.h`
+### ESPWebMqttManager
+- 📡 Інтеграція з MQTT брокерами
+- 🔄 Автоматичне перепідключення та підтримка кількох хостів (резервування)
+- 🏠 Зручне створення сенсоров та світла для Home Assistant з авто-discover (HA MQTT Discovery)
+- 🎛️ Зручна прив'язка лямбда-функцій до команд MQTT
 
 ## Встановлення
 
@@ -40,6 +45,12 @@ inline WiFiNetwork wifiNetworks[] = {
 inline const int wifiNetworkCount = sizeof(wifiNetworks) / sizeof(wifiNetworks[0]);
 #define WIFI_NETWORKS_DEFINED
 
+// ============================================
+// MQTT налаштування (якщо використовується ESPWebMqttManager)
+// ============================================
+inline const char* mqttHosts[] = {"mqtt.lan", "192.168.0.150", "192.168.0.120"};
+inline const int mqttHostCount = sizeof(mqttHosts) / sizeof(mqttHosts[0]);
+
 // Опціонально - розкоментуйте та змініть за потреби:
 // #define WIFI_HOSTNAME "my-device"
 // #define STATIC_IP IPAddress(192, 168, 1, 100)
@@ -50,16 +61,22 @@ inline const int wifiNetworkCount = sizeof(wifiNetworks) / sizeof(wifiNetworks[0
 #endif
 ```
 
-### 2. Використайте в коді
+### 2. Створіть `MqttHelper.h` (Опціонально, для організації коду)
+
+Це допоможе винести логіку ініціалізації MQTT в окремий файл. Дивіться `examples/BasicUsage/MqttHelper.h.example`.
+
+### 3. Використайте в коді
 
 ```cpp
 #include <WiFiManager.h>
 #include <AuthenticationMiddleware.h>
+#include <ESPWebMqttManager.h>
 #include "secrets.h"
 
 WiFiManager wifiManager;
 AuthenticationMiddleware authMiddleware;
 AsyncWebServer server(80);
+ESPWebMqttManager mqttManager("basic_device", "Моє Базове Устаткування");
 
 void setup() {
   // WiFi
@@ -68,12 +85,18 @@ void setup() {
   // Auth
   authMiddleware.begin();
   server.addMiddleware(&authMiddleware);
+
+  // MQTT
+  mqttManager.setHosts(mqttHosts, mqttHostCount);
+  mqttManager.addSensor("sensor1", []() { return String(random(20, 30)); }, 5000);
+  mqttManager.begin();
   
   server.begin();
 }
 
 void loop() {
   wifiManager.tick();
+  mqttManager.loop(); // Обов'язково викликати в loop
 }
 ```
 
@@ -102,8 +125,11 @@ void loop() {
 
 ## Залежності
 
-- ESPAsyncWebServer
-- AsyncTCP
+Ця бібліотека залежить від наступних:
+- [ESPAsyncWebServer](https://github.com/me-no-dev/ESPAsyncWebServer)
+- [AsyncTCP](https://github.com/me-no-dev/AsyncTCP)
+- [PubSubClient](https://github.com/knolleary/pubsubclient) (Для ESPWebMqttManager)
+- [ArduinoJson](https://arduinojson.org/) (Для підтримки JSON у ESPWebMqttManager та MQTT Discovery)
 
 ## Ліцензія
 

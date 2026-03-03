@@ -1,0 +1,61 @@
+#ifndef MQTT_HELPER_H
+#define MQTT_HELPER_H
+
+#include <ESPWebMqttManager.h>
+#include "secrets.h"
+
+class MqttHelper {
+public:
+    static void setup(ESPWebMqttManager& mqtt) {
+        // 1. Встановлюємо хости з secrets.h
+        mqtt.setHosts(mqttHosts, mqttHostCount);
+        
+        // 2. Додаємо сенсори
+        // Приклад: Температурний сенсор (оновлюється кожні 5 секунд)
+        mqtt.addSensor("sensor_temp", []() {
+            float temp = 23.5; // Тут має бути код читання реального сенсора
+            return String(temp, 1);
+        }, 5000);
+
+        // 3. Додаємо команди (actuators)
+        // Приклад: Перемикач (реле)
+        mqtt.addCommand("relay_1/set", [](String payload) {
+            if (payload == "ON") {
+                // Вмикаємо реле
+                // digitalWrite(RELAY_PIN, HIGH);
+            } else if (payload == "OFF") {
+                // Вимикаємо реле
+                // digitalWrite(RELAY_PIN, LOW);
+            }
+        });
+
+        // 4. Додаємо світло для Home Assistant (HA MQTT Discovery)
+        // Це створить сутність типу light у HA
+        const char* lightId = "room_light";
+        const char* lightName = "Кімнатне Світло";
+        mqtt.addHAJsonLight(lightId, lightName);
+        
+        // Обробка команд для світла
+        String deviceId = mqtt.getDeviceId();
+        String lightCmdTopic = String("homeassistant/light/") + deviceId + "/" + lightId + "/set";
+        
+        mqtt.addCommand(lightCmdTopic, [](String payload) {
+            // В payload буде JSON: {"state": "ON", "brightness": 255}
+            // Потрібно розпарсити ArduinoJson і застосувати:
+            // if (payload.indexOf("\"state\":\"ON\"") > 0) ...
+        });
+        
+        // Стан світла (оновлюється раз на 5с)
+        String lightStateTopic = String("homeassistant/light/") + deviceId + "/" + lightId + "/state";
+        mqtt.addSensor(lightStateTopic, []() {
+            // Повертаємо поточний стан у JSON: {"state": "ON", "brightness": 128}
+            return String("{\"state\":\"ON\",\"brightness\":128}"); 
+        }, 5000);
+
+
+        // 5. Запускаємо MQTT менеджера
+        mqtt.begin();
+    }
+};
+
+#endif
