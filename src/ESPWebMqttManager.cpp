@@ -71,6 +71,15 @@ bool ESPWebMqttManager::isConnected() {
     return _mqttClient.connected();
 }
 
+void ESPWebMqttManager::forcePublishSensors() {
+    for (auto& s : _sensors) {
+        s.forcePublish = true;
+    }
+    if (isConnected()) {
+        handleSensors();
+    }
+}
+
 void ESPWebMqttManager::addSensor(String topic, TGetter getter, unsigned long interval) {
     _sensors.push_back({topic, getter, interval, 0, "", true});
 }
@@ -217,6 +226,27 @@ void ESPWebMqttManager::publishHAConfig(const HASensorDef& def) {
     
     _mqttClient.publish(configTopic.c_str(), config.c_str(), true);
 }
+
+void ESPWebMqttManager::removeHADevice(const char* id, const char* type) {
+    String component = type;
+    if (component == "light_json") component = "light";
+    String configTopic = String("homeassistant/") + component + "/" + _deviceId + "/" + id + "/config";
+    // Відправляємо пусте повідомлення з retain для видалення з Auto Discovery
+    _mqttClient.publish(configTopic.c_str(), "", true);
+}
+
+void ESPWebMqttManager::clearSensorsAndDefs() {
+    _sensors.clear();
+    _haDefs.clear();
+    _discoveryPublished = false; // Щоб можна було опублікувати новий discovery, якщо потрібно
+}
+
+void ESPWebMqttManager::removeTopic(const char* topic) {
+    if (_mqttClient.connected()) {
+        _mqttClient.publish(topic, "", true);
+    }
+}
+
 /*
 void ESPWebMqttManager::publishProxyAvailability(const char* deviceId, bool online) {
     String topic = String("homeassistant/sensor/") + deviceId + "/availability";

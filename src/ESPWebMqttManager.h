@@ -42,6 +42,9 @@ public:
     bool isConnected();
     String getDeviceId() const { return _deviceId; }
 
+    // Примусова публікація всіх сенсорів негайно
+    void forcePublishSensors();
+
     // Додавання сенсора для автоматичної публікації
     void addSensor(String topic, TGetter getter, unsigned long interval = 60000);
 
@@ -58,6 +61,11 @@ public:
     void addHAJsonLight(const char* id, const char* name, const char* effectsJson = nullptr);
     void addHASelect(const char* id, const char* name, const char* optionsJson);
     void addHANumber(const char* id, const char* name, float min, float max, const char* unit = nullptr, const char* icon = nullptr);
+
+    // Додано для видалення сутностей та очищення
+    void removeHADevice(const char* id, const char* type);
+    void clearSensorsAndDefs();
+    void removeTopic(const char* topic);
 
     /* // Proxy методи (для шлюзу ESP-NOW)
     void publishProxyAvailability(const char* deviceId, bool online);
