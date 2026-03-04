@@ -368,7 +368,13 @@ void WiFiManager::startAPMode() {
 String WiFiManager::generateHostname() {
   uint64_t chipid = ESP.getEfuseMac(); // 6 байтів MAC
   char hostname[32];
-  snprintf(hostname, sizeof(hostname), "light-%02X%02X%02X",
+#ifdef WIFI_HOSTNAME_PREFIX
+  const char* prefix = WIFI_HOSTNAME_PREFIX;
+#else
+  const char* prefix = "light";
+#endif
+  snprintf(hostname, sizeof(hostname), "%s-%02X%02X%02X",
+           prefix,
            (uint8_t)(chipid >> 24) & 0xFF,
            (uint8_t)(chipid >> 32) & 0xFF,
            (uint8_t)(chipid >> 40) & 0xFF);

@@ -107,6 +107,7 @@ void loop() {
 | Параметр | Опис | За замовчуванням |
 |----------|------|------------------|
 | `WIFI_HOSTNAME` | Hostname для mDNS | Генерується з MAC |
+| `WIFI_HOSTNAME_PREFIX` | Префікс авто-hostname | "light" |
 | `STATIC_IP` | Статичний IP | DHCP (0.0.0.0) |
 | `GATEWAY_IP` | Gateway | 192.168.0.1 |
 | `SUBNET_MASK` | Subnet mask | 255.255.255.0 |
