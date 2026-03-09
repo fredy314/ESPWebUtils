@@ -107,7 +107,6 @@ bool ESPWebMqttManager::reconnect() {
         for (const auto& cmd : _commands) {
             _mqttClient.subscribe(cmd.topic.c_str());
         }
-        for (auto& s : _sensors) s.forcePublish = true;
         return true;
     }
 
