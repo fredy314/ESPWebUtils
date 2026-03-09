@@ -102,7 +102,7 @@ bool ESPWebMqttManager::reconnect() {
         _reconnectRetries = 0;
         publishAvailability(true);
         publishDiscovery();
-        forcePublishSensors()
+        forcePublishSensors();
         // Перепідписка на команди
         for (const auto& cmd : _commands) {
             _mqttClient.subscribe(cmd.topic.c_str());
