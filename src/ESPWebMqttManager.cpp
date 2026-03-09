@@ -62,7 +62,7 @@ void ESPWebMqttManager::loop() {
             _lastUpdateAll = now;
             publishAvailability(true);
             publishDiscovery();
-            for (auto& s : _sensors) s.forcePublish = true;
+            forcePublishSensors();
         }
     }
 }
@@ -101,10 +101,8 @@ bool ESPWebMqttManager::reconnect() {
         Serial.println("MQTT: Connected");
         _reconnectRetries = 0;
         publishAvailability(true);
-        if (!_discoveryPublished) {
-            publishDiscovery();
-            _discoveryPublished = true;
-        }
+        publishDiscovery();
+        forcePublishSensors()
         // Перепідписка на команди
         for (const auto& cmd : _commands) {
             _mqttClient.subscribe(cmd.topic.c_str());
